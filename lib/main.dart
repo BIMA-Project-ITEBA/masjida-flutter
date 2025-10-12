@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:masjida/features/pagescreen/homescreen.dart';
-// Import file SignInScreen yang baru kita buat
-// import 'auth/screen/signupscreen.dart';
-// import 'pagescreen/favoritescreen.dart';
+// IMPORT BARU DENGAN PATH YANG BENAR
+import 'package:masjida/features/home/screens/home_screen.dart';
 
 void main() {
-  // Memastikan Flutter binding diinisialisasi
   WidgetsFlutterBinding.ensureInitialized();
-  // Mengatur warna status bar agar sesuai dengan tema
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
@@ -26,11 +22,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        fontFamily: 'Inter', // Menggunakan font yang umum dan bersih
+        fontFamily: 'Inter',
         scaffoldBackgroundColor: Colors.white,
       ),
-      // MENGGANTI home MENJADI SignInScreen()
+      // Memanggil HomeScreen dari import yang benar
       home: const HomeScreen(),
     );
   }
 }
+
