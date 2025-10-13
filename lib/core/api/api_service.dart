@@ -7,8 +7,17 @@ class ApiService {
   final String _baseUrl = "http://103.13.206.132:8069";
   String? _sessionCookie;
 
+  /// Helper function untuk membuat URL gambar yang lengkap.
+  String getFullImageUrl(String? relativeUrl) {
+    if (relativeUrl == null || relativeUrl.isEmpty) {
+      // Mengembalikan URL placeholder jika tidak ada gambar dari API
+      return 'https://placehold.co/600x400/e2e8f0/e2e8f0?text=';
+    }
+    // Menggabungkan base URL dengan path relatif yang diberikan oleh Odoo
+    return '$_baseUrl$relativeUrl';
+  }
+
   Future<void> _authenticate() async {
-    // ... (kode autentikasi tidak diubah, sudah benar)
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/web/session/authenticate'),
@@ -38,67 +47,82 @@ class ApiService {
     }
   }
 
-  // === HEADER CONTENT-TYPE DIHAPUS DARI GET REQUEST ===
   Future<List<Mosque>> getMosques() async {
-    if (_sessionCookie == null) await _authenticate();
+    try {
+      print("FINAL URL: $_baseUrl/api/v1/mosques");
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/v1/mosques'),
+      );
 
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/mosques'),
-      headers: {
-        // 'Content-Type' tidak diperlukan untuk GET!
-        'Cookie': _sessionCookie!,
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      final List<dynamic> data = jsonResponse['result']['data'];
-      return data.map((json) => Mosque.fromJson(json)).toList();
-    } else {
-      print('Gagal memuat masjid. Status: ${response.statusCode}');
-      print('Body: ${response.body}');
-      throw Exception('Gagal memuat daftar masjid dari API.');
+      if (response.statusCode == 200) {
+        print("RESPONSE BODY: ${response.body}"); 
+        final jsonResponse = json.decode(response.body);
+        print("RESPONSE DATA: $jsonResponse");
+        if (jsonResponse['status'] == 'success') {
+          final List<dynamic> data = jsonResponse['data'];
+          return data.map((json) => Mosque.fromJson(json)).toList();
+        } else {
+          // Menangani error yang dikirim oleh API Odoo
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
+        }
+      } else {
+        // Menangani error level HTTP (404, 500, dll.)
+        print('Gagal memuat masjid. Status: ${response.statusCode}');
+        print('Body: ${response.body}');
+        throw Exception(
+            'Server merespons dengan error. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Menangani error koneksi (tidak ada internet, server down, CORS, dll.)
+      print('TERJADI ERROR KONEKSI (getMosques): $e');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet dan konfigurasi server Anda.');
     }
   }
 
-  // === HEADER CONTENT-TYPE DIHAPUS DARI GET REQUEST ===
   Future<Mosque> getMosqueDetail(int id) async {
-    if (_sessionCookie == null) await _authenticate();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/mosques/$id'),
-      headers: {
-        'Cookie': _sessionCookie!,
-      },
-    );
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      final Map<String, dynamic> data = jsonResponse['result']['data'];
-      return Mosque.fromDetailJson(data);
-    } else {
-      throw Exception(
-          'Gagal memuat detail masjid. Status: ${response.statusCode}');
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/v1/mosques/$id'),
+      );
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          final Map<String, dynamic> data = jsonResponse['data'];
+          return Mosque.fromDetailJson(data);
+        } else {
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
+        }
+      } else {
+        throw Exception(
+            'Gagal memuat detail masjid. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('TERJADI ERROR KONEKSI (getMosqueDetail): $e');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
 
-  // === HEADER CONTENT-TYPE DIHAPUS DARI GET REQUEST ===
   Future<List<Preacher>> getPreachers() async {
-    if (_sessionCookie == null) await _authenticate();
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/v1/preachers'),
+      );
 
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/preachers'),
-      headers: {
-        'Cookie': _sessionCookie!,
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      final List<dynamic> data = jsonResponse['result']['data'];
-      return data.map((json) => Preacher.fromJson(json)).toList();
-    } else {
-      throw Exception(
-          'Gagal memuat daftar Da\'i dari API. Status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+         if (jsonResponse['status'] == 'success') {
+          final List<dynamic> data = jsonResponse['data'];
+          return data.map((json) => Preacher.fromJson(json)).toList();
+        } else {
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
+        }
+      } else {
+        throw Exception(
+            'Gagal memuat daftar Da\'i dari API. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+       print('TERJADI ERROR KONEKSI (getPreachers): $e');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
 }
-

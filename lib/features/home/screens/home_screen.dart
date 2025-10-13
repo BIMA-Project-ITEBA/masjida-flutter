@@ -31,12 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // === APPBAR DIPERBARUI TOTAL ===
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false, // Menghilangkan tombol back otomatis
-        // Judul sekarang menjadi search bar
         title: Container(
           height: 42,
           decoration: BoxDecoration(
@@ -49,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
               hintText: 'Search',
               border: InputBorder.none,
               prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-              // IKON PROFIL PINDAH KE DALAM SEBAGAI SUFFIX
               suffixIcon: Padding(
                 padding: const EdgeInsets.all(4.0), // Beri sedikit jarak
                 child: InkWell(
@@ -67,12 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              // Sesuaikan padding agar hint text terlihat lebih di tengah
               contentPadding: const EdgeInsets.only(left: 50, right: 10, top: 12),
             ),
           ),
         ),
-        // ACTIONS DIHAPUS DARI SINI
       ),
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
@@ -94,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Widget untuk menampilkan daftar masjid dari API
+// === WIDGET DAFTAR MASJID DENGAN TAMPILAN BARU ===
 class MosqueListPage extends StatefulWidget {
   const MosqueListPage({super.key});
 
@@ -104,89 +99,174 @@ class MosqueListPage extends StatefulWidget {
 
 class _MosqueListPageState extends State<MosqueListPage> {
   late Future<List<Mosque>> futureMosques;
+  final ApiService apiService = ApiService(); // Instance ApiService
 
   @override
   void initState() {
     super.initState();
-    futureMosques = ApiService().getMosques();
+    futureMosques = apiService.getMosques();
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Mosque>>(
-        future: futureMosques,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Gagal memuat masjid: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Tidak ada masjid ditemukan.'));
-          } else {
-            final mosques = snapshot.data!;
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: mosques.length,
-              itemBuilder: (context, index) {
-                final mosque = mosques[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MosqueDetailScreen(mosqueId: mosque.id),
-                        ),
-                      );
+      future: futureMosques,
+      builder: (context, snapshot) {
+        // 1. Saat data sedang dimuat
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        // 2. Jika terjadi error saat memuat data
+        else if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Gagal memuat data: ${snapshot.error}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Coba Lagi'),
+                    onPressed: () {
+                      setState(() {
+                        futureMosques = apiService.getMosques();
+                      });
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: Image.network(
-                              mosque.imageUrl ?? 'https://placehold.co/100x100/E4F2E8/333?text=Masjid',
-                              width: 80, height: 80, fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 80,
-                                  height: 80,
-                                  color: Colors.grey[200],
-                                  child: const Icon(Icons.mosque, color: Colors.grey),
-                                );
-                              },
-                            ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        // 3. Jika data berhasil dimuat tetapi kosong
+        else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text("Tidak ada data masjid ditemukan."));
+        }
+        // 4. Jika data berhasil dimuat dan tidak kosong
+        else {
+          final mosques = snapshot.data!;
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: mosques.length,
+            itemBuilder: (context, index) {
+              final mosque = mosques[index];
+              // Menggunakan helper function dari ApiService untuk URL gambar
+              final imageUrl = apiService.getFullImageUrl(mosque.imageUrl);
+
+              // Widget Card baru yang lebih menarik
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15)),
+                elevation: 5,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            MosqueDetailScreen(mosqueId: mosque.id),
+                      ),
+                    );
+                  },
+                  child: Stack(
+                    alignment: Alignment.bottomLeft,
+                    children: [
+                      // Gambar sebagai latar belakang
+                      Image.network(
+                        imageUrl,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 200,
+                            color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator()),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 200,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.mosque,
+                                color: Colors.grey, size: 60),
+                          );
+                        },
+                      ),
+                      // Lapisan gradien untuk keterbacaan teks
+                      Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withOpacity(0.7),
+                              Colors.transparent
+                            ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                      ),
+                      // Teks nama dan area masjid di atas gambar
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              mosque.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                        blurRadius: 2.0, color: Colors.black54)
+                                  ]),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
                               children: [
-                                Text(mosque.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  mosque.fullAddress ?? 'Alamat tidak tersedia',
-                                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                const Icon(Icons.location_on, color: Colors.white, size: 16),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    mosque.area ?? 'Lokasi tidak tersedia',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        shadows: [
+                                          Shadow(
+                                              blurRadius: 2.0,
+                                              color: Colors.black54)
+                                        ]),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                );
-              },
-            );
-          }
-        });
+                ),
+              );
+            },
+          );
+        }
+      },
+    );
   }
 }
-
