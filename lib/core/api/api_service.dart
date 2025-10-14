@@ -125,4 +125,26 @@ class ApiService {
       throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
+  Future<Preacher> getPreacherDetail(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/v1/preachers/$id'),
+      );
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          final Map<String, dynamic> data = jsonResponse['data'];
+          return Preacher.fromDetailJson(data);
+        } else {
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
+        }
+      } else {
+        throw Exception(
+            'Gagal memuat detail Da\'i. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('TERJADI ERROR KONEKSI (getPreacherDetail): $e');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    }
+  }
 }
