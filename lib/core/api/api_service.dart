@@ -5,7 +5,7 @@ import '../models/preacher_model.dart';
 import '../models/invitation_model.dart'; // <-- Pastikan import ini ada
 
 class ApiService {
-  final String _baseUrl = "http://localhost:8069";
+  final String _baseUrl = "http://103.13.206.132:8069";
   String? _sessionCookie;
 
   /// Helper function untuk membuat URL gambar yang lengkap.
@@ -27,7 +27,7 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           "jsonrpc": "2.0",
-          "params": {"db": "admin", "login": "admin", "password": "admin"}
+          "params": {"db": "masjida", "login": "admin", "password": "admin"}
         }),
       );
 
