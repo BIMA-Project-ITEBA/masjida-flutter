@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:masjida/features/auth/screen/signinscreen.dart';
+import 'package:masjida/features/auth/screen/signupscreen.dart';
 // IMPORT BARU DENGAN PATH YANG BENAR
 import 'package:masjida/features/home/screens/home_screen.dart';
 
@@ -26,7 +28,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
       ),
       // Memanggil HomeScreen dari import yang benar
-      home: const HomeScreen(),
+      home: const SignUpScreen(),
     );
   }
 }
