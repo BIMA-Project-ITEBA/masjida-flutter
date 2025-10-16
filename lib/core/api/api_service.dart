@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/preacher_model.dart';
 import '../models/mosque_model.dart';
+import '../models/preacher_model.dart';
+import '../models/invitation_model.dart'; // <-- Pastikan import ini ada
 
 class ApiService {
-  final String _baseUrl = "http://103.13.206.132:8069";
+  final String _baseUrl = "http://localhost:8069";
   String? _sessionCookie;
 
   /// Helper function untuk membuat URL gambar yang lengkap.
@@ -18,13 +19,15 @@ class ApiService {
   }
 
   Future<void> _authenticate() async {
+    // Fungsi ini akan dijalankan secara otomatis jika belum ada sesi.
+    // Pastikan db, login, dan password sesuai dengan server Odoo Anda.
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/web/session/authenticate'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           "jsonrpc": "2.0",
-          "params": {"db": "masjida", "login": "admin", "password": "admin"}
+          "params": {"db": "admin", "login": "admin", "password": "admin"}
         }),
       );
 
@@ -49,33 +52,24 @@ class ApiService {
 
   Future<List<Mosque>> getMosques() async {
     try {
-      print("FINAL URL: $_baseUrl/api/v1/mosques");
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/mosques'),
       );
 
       if (response.statusCode == 200) {
-        print("RESPONSE BODY: ${response.body}"); 
         final jsonResponse = json.decode(response.body);
-        print("RESPONSE DATA: $jsonResponse");
         if (jsonResponse['status'] == 'success') {
           final List<dynamic> data = jsonResponse['data'];
           return data.map((json) => Mosque.fromJson(json)).toList();
         } else {
-          // Menangani error yang dikirim oleh API Odoo
           throw Exception(jsonResponse['message'] ?? 'Unknown API error');
         }
       } else {
-        // Menangani error level HTTP (404, 500, dll.)
-        print('Gagal memuat masjid. Status: ${response.statusCode}');
-        print('Body: ${response.body}');
         throw Exception(
             'Server merespons dengan error. Status: ${response.statusCode}');
       }
     } catch (e) {
-      // Menangani error koneksi (tidak ada internet, server down, CORS, dll.)
-      print('TERJADI ERROR KONEKSI (getMosques): $e');
-      throw Exception('Gagal terhubung ke server. Periksa koneksi internet dan konfigurasi server Anda.');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
 
@@ -97,7 +91,6 @@ class ApiService {
             'Gagal memuat detail masjid. Status: ${response.statusCode}');
       }
     } catch (e) {
-      print('TERJADI ERROR KONEKSI (getMosqueDetail): $e');
       throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
@@ -110,7 +103,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-         if (jsonResponse['status'] == 'success') {
+        if (jsonResponse['status'] == 'success') {
           final List<dynamic> data = jsonResponse['data'];
           return data.map((json) => Preacher.fromJson(json)).toList();
         } else {
@@ -121,10 +114,10 @@ class ApiService {
             'Gagal memuat daftar Da\'i dari API. Status: ${response.statusCode}');
       }
     } catch (e) {
-       print('TERJADI ERROR KONEKSI (getPreachers): $e');
       throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
+
   Future<Preacher> getPreacherDetail(int id) async {
     try {
       final response = await http.get(
@@ -143,8 +136,75 @@ class ApiService {
             'Gagal memuat detail Da\'i. Status: ${response.statusCode}');
       }
     } catch (e) {
-      print('TERJADI ERROR KONEKSI (getPreacherDetail): $e');
       throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
+
+  // === METODE BARU UNTUK NOTIFIKASI ===
+
+  Future<List<Invitation>> getPendingInvitations() async {
+    // Membutuhkan login, jadi kita panggil authenticate
+    if (_sessionCookie == null) await _authenticate();
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/v1/schedules/pending'),
+        headers: {'Cookie': _sessionCookie!},
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          final List<dynamic> data = jsonResponse['data'];
+          return data.map((json) => Invitation.fromJson(json)).toList();
+        } else {
+          throw Exception(jsonResponse['message']);
+        }
+      } else {
+        throw Exception('Gagal memuat undangan. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error saat mengambil undangan: $e');
+    }
+  }
+
+  Future<bool> confirmInvitation(int scheduleId) async {
+    if (_sessionCookie == null) await _authenticate();
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/schedules/$scheduleId/confirm'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': _sessionCookie!,
+      },
+      body: json.encode({"jsonrpc": "2.0", "params": {}}),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      // Odoo JSON-RPC membungkusnya dalam 'result'
+      return jsonResponse['result']?['status'] == 'success';
+    }
+    return false;
+  }
+
+  Future<bool> rejectInvitation(int scheduleId) async {
+    if (_sessionCookie == null) await _authenticate();
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/schedules/$scheduleId/reject'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': _sessionCookie!,
+      },
+      body: json.encode({"jsonrpc": "2.0", "params": {}}),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['result']?['status'] == 'success';
+    }
+    return false;
+  }
 }
+

@@ -1,97 +1,86 @@
 import 'package:flutter/material.dart';
+import '../../../core/api/api_service.dart';
+import '../../../core/models/invitation_model.dart';
+import 'invitation_detail_screen.dart'; // Halaman baru yang akan kita buat
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
   @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  late Future<List<Invitation>> futureInvitations;
+  final ApiService apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInvitations();
+  }
+
+  void _loadInvitations() {
+    setState(() {
+      futureInvitations = apiService.getPendingInvitations();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: const Text(
-            'Notification',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                'Clear all',
-                style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-          bottom: const TabBar(
-            labelColor: Colors.blue,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.blue,
-            tabs: [
-              Tab(text: 'Recent'),
-              Tab(text: 'Earlier'),
-              Tab(text: 'Archived'),
-            ],
-          ),
-        ),
-        backgroundColor: Colors.white,
-        body: TabBarView(
-          children: [
-            _buildNotificationList(recentNotifications),
-            _buildNotificationList(earlierNotifications),
-            // Archived list is empty for now
-            const Center(child: Text('No archived notifications.')),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: FutureBuilder<List<Invitation>>(
+        future: futureInvitations,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(
+                child:
+                    Text("Gagal memuat notifikasi: ${snapshot.error}"));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('Tidak ada undangan baru.'));
+          } else {
+            final invitations = snapshot.data!;
+            return ListView.builder(
+              itemCount: invitations.length,
+              itemBuilder: (context, index) {
+                final invitation = invitations[index];
+                return _buildInvitationCard(invitation);
+              },
+            );
+          }
+        },
       ),
     );
   }
 
-  Widget _buildNotificationList(List<Map<String, String>> notifications) {
-    return ListView.builder(
-      itemCount: notifications.length,
-      itemBuilder: (context, index) {
-        final notification = notifications[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundImage: NetworkImage(notification['avatar']!),
+  Widget _buildInvitationCard(Invitation invitation) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage:
+            NetworkImage(apiService.getFullImageUrl(invitation.mosqueImageUrl)),
+        child: (invitation.mosqueImageUrl == null) ? const Icon(Icons.mosque) : null,
+      ),
+      title: Text(
+        invitation.mosqueName,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text('Mengundang Anda untuk kajian: "${invitation.topic}"'),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () async {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InvitationDetailScreen(invitation: invitation),
           ),
-          title: Text(
-            notification['title']!,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(notification['subtitle']!),
-          trailing: Text(
-            notification['time']!,
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-          ),
-          onTap: () {},
         );
+        // Jika detail screen mengembalikan true (ada aksi), muat ulang daftar
+        if (result == true) {
+          _loadInvitations();
+        }
       },
     );
   }
 }
-
-// Data dummy
-final List<Map<String, String>> recentNotifications = [
-  {
-    'avatar': 'https://placehold.co/100x100/EFEFEF/333?text=MA',
-    'title': 'Masjid Agung',
-    'subtitle': 'Penawara Dawah',
-    'time': 'Sun, 12:40pm',
-  },
-];
-
-final List<Map<String, String>> earlierNotifications = [
-  {
-    'avatar': 'https://placehold.co/100x100/E4F2E8/333?text=MJ',
-    'title': 'Masjid Jami',
-    'subtitle': 'Reminder dawah',
-    'time': 'Tue, 10:56pm',
-  },
-];
