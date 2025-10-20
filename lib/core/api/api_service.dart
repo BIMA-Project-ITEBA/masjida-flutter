@@ -2,20 +2,22 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/mosque_model.dart';
 import '../models/preacher_model.dart';
-import '../models/invitation_model.dart';
+import '../models/invitation_model.dart'; // <-- Pastikan import ini ada
 
 class ApiService {
   final String _baseUrl = "http://103.13.206.132:8069";
   String? _sessionCookie;
 
+  /// Helper function untuk membuat URL gambar yang lengkap.
   String getFullImageUrl(String? relativeUrl) {
     if (relativeUrl == null || relativeUrl.isEmpty) {
+      // Mengembalikan URL placeholder jika tidak ada gambar dari API
       return 'https://placehold.co/600x400/e2e8f0/e2e8f0?text=';
     }
+    // Menggabungkan base URL dengan path relatif yang diberikan oleh Odoo
     return '$_baseUrl$relativeUrl';
   }
 
-  // === FUNGSI SIGN IN BARU YANG SEHARUSNYA KAMU PAKAI ===
   Future<bool> signIn(String email, String password) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/web/session/authenticate'),
@@ -41,7 +43,6 @@ class ApiService {
     return false;
   }
 
-  // === FUNGSI SIGN UP BARU YANG SEHARUSNYA KAMU PAKAI ===
   Future<bool> signUp({
     required String name,
     required String email,
@@ -52,7 +53,7 @@ class ApiService {
     required String userType,
   }) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/api/v1/signup'), // <-- PASTIKAN ENDPOINT INI BENAR!
+      Uri.parse('$_baseUrl/api/register_user'), // <-- PASTIKAN ENDPOINT INI BENAR!
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         "jsonrpc": "2.0",
@@ -63,7 +64,7 @@ class ApiService {
           "phone": phone,
           "date_of_birth": dateOfBirth,
           "gender": gender,
-          "user_type": userType,
+          "user_type": "preacher"
         }
       }),
     );
@@ -80,128 +81,120 @@ class ApiService {
     }
   }
 
-  // Helper untuk memastikan user sudah login
-  Future<void> _ensureAuthenticated() async {
-    if (_sessionCookie == null) {
-      // Di sini kita tidak lagi auto-login sebagai admin
-      // Kita lempar error agar UI bisa mengarahkan ke halaman login
-      throw Exception('Sesi tidak valid. Silakan login kembali.');
-    }
-  }
-
-  // --- SEMUA FUNGSI LAMA SEKARANG PAKAI _ensureAuthenticated ---
 
   Future<List<Mosque>> getMosques() async {
-    await _ensureAuthenticated(); // Membutuhkan login
-    // ... sisa kodenya sama seperti milikmu
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/mosques'),
-        headers: { 'Cookie': _sessionCookie! },
       );
+
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        if (jsonResponse['result']?['status'] == 'success') {
-          final List<dynamic> data = jsonResponse['result']['data'];
+        if (jsonResponse['status'] == 'success') {
+          final List<dynamic> data = jsonResponse['data'];
           return data.map((json) => Mosque.fromJson(json)).toList();
         } else {
-          throw Exception(jsonResponse['result']?['message'] ?? 'Unknown API error');
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
         }
       } else {
-        throw Exception('Server error. Status: ${response.statusCode}');
+        throw Exception(
+            'Server merespons dengan error. Status: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Gagal terhubung. Periksa koneksi Anda.');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
 
+
+
   Future<Mosque> getMosqueDetail(int id) async {
-    await _ensureAuthenticated(); // Membutuhkan login
-    // ... sisa kodenya sama seperti milikmu
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/mosques/$id'),
-        headers: { 'Cookie': _sessionCookie! },
       );
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        if (jsonResponse['result']?['status'] == 'success') {
-          final Map<String, dynamic> data = jsonResponse['result']['data'];
+        if (jsonResponse['status'] == 'success') {
+          final Map<String, dynamic> data = jsonResponse['data'];
           return Mosque.fromDetailJson(data);
         } else {
-          throw Exception(jsonResponse['result']?['message'] ?? 'Unknown API error');
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
         }
       } else {
-        throw Exception('Gagal memuat detail. Status: ${response.statusCode}');
+        throw Exception(
+            'Gagal memuat detail masjid. Status: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Gagal terhubung. Periksa koneksi Anda.');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
 
   Future<List<Preacher>> getPreachers() async {
-    await _ensureAuthenticated(); // Membutuhkan login
-    // ... sisa kodenya sama seperti milikmu
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/preachers'),
-        headers: { 'Cookie': _sessionCookie! },
       );
+
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        if (jsonResponse['result']?['status'] == 'success') {
-          final List<dynamic> data = jsonResponse['result']['data'];
+        if (jsonResponse['status'] == 'success') {
+          final List<dynamic> data = jsonResponse['data'];
           return data.map((json) => Preacher.fromJson(json)).toList();
         } else {
-          throw Exception(jsonResponse['result']?['message'] ?? 'Unknown API error');
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
         }
       } else {
-        throw Exception('Gagal memuat Da\'i. Status: ${response.statusCode}');
+        throw Exception(
+            'Gagal memuat daftar Da\'i dari API. Status: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Gagal terhubung. Periksa koneksi Anda.');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
 
   Future<Preacher> getPreacherDetail(int id) async {
-    await _ensureAuthenticated(); // Membutuhkan login
-    // ... sisa kodenya sama seperti milikmu
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/preachers/$id'),
-        headers: { 'Cookie': _sessionCookie! },
       );
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        if (jsonResponse['result']?['status'] == 'success') {
-          final Map<String, dynamic> data = jsonResponse['result']['data'];
+        if (jsonResponse['status'] == 'success') {
+          final Map<String, dynamic> data = jsonResponse['data'];
           return Preacher.fromDetailJson(data);
         } else {
-          throw Exception(jsonResponse['result']?['message'] ?? 'Unknown API error');
+          throw Exception(jsonResponse['message'] ?? 'Unknown API error');
         }
       } else {
-        throw Exception('Gagal memuat detail Da\'i. Status: ${response.statusCode}');
+        throw Exception(
+            'Gagal memuat detail Da\'i. Status: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Gagal terhubung. Periksa koneksi Anda.');
+      throw Exception('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     }
   }
 
-  // Fungsi notifikasi tidak diubah sama sekali
+  // === METODE BARU UNTUK NOTIFIKASI ===
+
   Future<List<Invitation>> getPendingInvitations() async {
-    await _ensureAuthenticated();
+    // Membutuhkan login, jadi kita panggil authenticate
+    if (_sessionCookie == null) {
+      throw Exception('Anda harus login untuk melihat undangan.');
+    }
+
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/schedules/pending'),
         headers: {'Cookie': _sessionCookie!},
       );
+
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        if (jsonResponse['result']?['status'] == 'success') {
-          final List<dynamic> data = jsonResponse['result']['data'];
+        if (jsonResponse['status'] == 'success') {
+          final List<dynamic> data = jsonResponse['data'];
           return data.map((json) => Invitation.fromJson(json)).toList();
         } else {
-          throw Exception(jsonResponse['result']?['message']);
+          throw Exception(jsonResponse['message']);
         }
       } else {
         throw Exception('Gagal memuat undangan. Status: ${response.statusCode}');
@@ -212,24 +205,41 @@ class ApiService {
   }
 
   Future<bool> confirmInvitation(int scheduleId) async {
-    await _ensureAuthenticated();
+    if (_sessionCookie == null) {
+      throw Exception('Anda harus login untuk melihat undangan.');
+    }
+
     final response = await http.post(
       Uri.parse('$_baseUrl/api/v1/schedules/$scheduleId/confirm'),
-      headers: {'Cookie': _sessionCookie!},
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': _sessionCookie!,
+      },
+      body: json.encode({"jsonrpc": "2.0", "params": {}}),
     );
+
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
+      // Odoo JSON-RPC membungkusnya dalam 'result'
       return jsonResponse['result']?['status'] == 'success';
     }
     return false;
   }
 
   Future<bool> rejectInvitation(int scheduleId) async {
-    await _ensureAuthenticated();
+    if (_sessionCookie == null) {
+      throw Exception('Anda harus login untuk melihat undangan.');
+    }
+
     final response = await http.post(
       Uri.parse('$_baseUrl/api/v1/schedules/$scheduleId/reject'),
-      headers: {'Cookie': _sessionCookie!},
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': _sessionCookie!,
+      },
+      body: json.encode({"jsonrpc": "2.0", "params": {}}),
     );
+
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
       return jsonResponse['result']?['status'] == 'success';
@@ -237,4 +247,3 @@ class ApiService {
     return false;
   }
 }
-

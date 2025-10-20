@@ -62,10 +62,11 @@ class _SignInScreenState extends State<SignInScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        // Tombol kembali ini mungkin tidak diperlukan jika ini halaman pertama
+        // leading: IconButton(
+        //   icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+        //   onPressed: () => Navigator.of(context).pop(),
+        // ),
       ),
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -121,7 +122,24 @@ class _SignInScreenState extends State<SignInScreen> {
                     : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
 
-              const SizedBox(height: 40),
+              // === TOMBOL BARU DITAMBAHKAN DI SINI ===
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                  );
+                },
+                child: const Text(
+                  'Continue without login',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -149,3 +167,4 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
+
