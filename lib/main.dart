@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// IMPORT BARU DENGAN PATH YANG BENAR
-import 'package:masjida/features/home/screens/home_screen.dart';
+import 'package:masjida/features/auth/screen/signinscreen.dart';
+// IMPORT BARU, KITA MULAI DARI HALAMAN SIGN IN!
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,8 +25,8 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Inter',
         scaffoldBackgroundColor: Colors.white,
       ),
-      // Memanggil HomeScreen dari import yang benar
-      home: const HomeScreen(),
+      // MEMANGGIL SignInScreen SEBAGAI HALAMAN PERTAMA!
+      home: const SignInScreen(),
     );
   }
 }

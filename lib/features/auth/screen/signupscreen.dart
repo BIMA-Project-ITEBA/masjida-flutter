@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../../core/api/api_service.dart';
+import 'signinscreen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -8,10 +11,75 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  // State untuk mengontrol visibilitas password
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _dateController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _apiService = ApiService();
+
+  String? _selectedGender;
   bool _isPasswordVisible = false;
-  // State BARU untuk menyimpan peran yang dipilih
-  String? _selectedRole;
+  bool _isConfirmPasswordVisible = false;
+  bool _isLoading = false;
+
+  Future<void> _handleSignUp() async {
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showErrorSnackbar("Passwords do not match!");
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      // TANYAKAN TEMAN BACKEND-MU ENDPOINT DAN FIELD-NYA!
+      final success = await _apiService.signUp(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        phone: _phoneController.text.trim(), userType: '',
+      );
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Registration successful! Please sign in."),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const SignInScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackbar(e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _dateController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +89,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () {
-            // Navigator.pop(context);
-          },
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       backgroundColor: Colors.white,
@@ -34,62 +100,53 @@ class _SignUpScreenState extends State<SignUpScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 20),
-              // Judul Utama
-              const Text(
-                'Sign up now',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
+              const Text('Sign up now', textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              // Sub-judul
-              const Text(
-                'Please fill the details and create account',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-              ),
+              const Text('Please fill the details and create account', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
               const SizedBox(height: 50),
 
-              // Form Nama
-              _buildTextField(hint: 'Your full name'),
+              TextFormField(controller: _nameController, decoration: _inputDecoration(hint: 'Your full name')),
               const SizedBox(height: 20),
-
-              // Form Email
-              _buildTextField(
-                  hint: 'Your email address',
-                  keyboardType: TextInputType.emailAddress),
+              TextFormField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: _inputDecoration(hint: 'Your email address')),
               const SizedBox(height: 20),
-
-              // Form Password
+              TextFormField(controller: _phoneController, keyboardType: TextInputType.phone, decoration: _inputDecoration(hint: 'Your phone number')),
+              const SizedBox(height: 20),
+              _buildDatePickerField(context),
+              const SizedBox(height: 20),
+              _buildGenderDropdown(),
+              const SizedBox(height: 20),
               _buildPasswordTextField(),
+              const SizedBox(height: 20),
+              _buildConfirmPasswordTextField(),
               const SizedBox(height: 8),
 
-              // Petunjuk Password
-              const Text(
-                'Password must be 8 character',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
+              const Text('Password must be 8 characters', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const SizedBox(height: 40),
+
+              ElevatedButton(
+                onPressed: _isLoading ? null : _handleSignUp,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
                 ),
+                child: _isLoading
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                    : const Text('Sign Up', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
-              const SizedBox(height: 30),
-
-              // === WIDGET BARU: PEMILIHAN PERAN ===
-              _buildRoleSelector(),
               const SizedBox(height: 40),
 
-              // Tombol Sign Up
-              _buildSignUpButton(),
-              const SizedBox(height: 40),
-
-              // Link ke Halaman Sign In
-              _buildSignInLink(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Already have an account?", style: TextStyle(color: Colors.grey)),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Sign in', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -97,178 +154,77 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Widget umum untuk text field
-  Widget _buildTextField(
-      {required String hint, TextInputType keyboardType = TextInputType.text}) {
-    return TextFormField(
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: Colors.grey[100],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      ),
+  // --- Helper Widgets ---
+
+  InputDecoration _inputDecoration({required String hint}) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.grey[100],
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
     );
   }
 
-  // Widget untuk text field password
+  Widget _buildDatePickerField(BuildContext context) {
+    return TextFormField(
+      controller: _dateController,
+      readOnly: true,
+      decoration: _inputDecoration(hint: 'Date of Birth').copyWith(
+        suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+      ),
+      onTap: () async {
+        FocusScope.of(context).requestFocus(FocusNode());
+        DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime(2000),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
+        );
+        if (pickedDate != null) {
+          setState(() {
+            _dateController.text = DateFormat('dd MMMM yyyy').format(pickedDate);
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildGenderDropdown() {
+    return DropdownButtonFormField<String>(
+      decoration: _inputDecoration(hint: 'Select Gender'),
+      value: _selectedGender,
+      items: const [
+        DropdownMenuItem(value: 'Male', child: Text('Male')),
+        DropdownMenuItem(value: 'Female', child: Text('Female')),
+      ],
+      onChanged: (value) => setState(() => _selectedGender = value),
+    );
+  }
+
   Widget _buildPasswordTextField() {
     return TextFormField(
+      controller: _passwordController,
       obscureText: !_isPasswordVisible,
-      decoration: InputDecoration(
-        hintText: '**********',
-        filled: true,
-        fillColor: Colors.grey[100],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: _inputDecoration(hint: 'Password').copyWith(
         suffixIcon: IconButton(
-          icon: Icon(
-            _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-            color: Colors.grey,
-          ),
-          onPressed: () {
-            setState(() {
-              _isPasswordVisible = !_isPasswordVisible;
-            });
-          },
+          icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+          onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
         ),
       ),
     );
   }
 
-  // === WIDGET BARU: Bagian Pemilihan Peran ===
-  Widget _buildRoleSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Register as:',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildRoleCard(
-                icon: Icons.group,
-                label: 'Community',
-                role: 'Community',
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildRoleCard(
-                icon: Icons.record_voice_over,
-                label: 'Da\'i',
-                role: 'Dai',
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // === WIDGET BARU: Kartu untuk satu pilihan peran ===
-  Widget _buildRoleCard({
-    required IconData icon,
-    required String label,
-    required String role,
-  }) {
-    final bool isSelected = _selectedRole == role;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedRole = role;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.blue : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: isSelected ? Colors.blue : Colors.grey[600], size: 32),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.blue : Colors.black87,
-              ),
-            ),
-          ],
+  Widget _buildConfirmPasswordTextField() {
+    return TextFormField(
+      controller: _confirmPasswordController,
+      obscureText: !_isConfirmPasswordVisible,
+      decoration: _inputDecoration(hint: 'Confirm Password').copyWith(
+        suffixIcon: IconButton(
+          icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+          onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
         ),
       ),
-    );
-  }
-
-  // Widget untuk tombol Sign Up
-  Widget _buildSignUpButton() {
-    return ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        elevation: 0,
-      ),
-      child: const Text(
-        'Sign Up',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-
-  // Widget untuk link ke halaman Sign In
-  Widget _buildSignInLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          "Already have an account?",
-          style: TextStyle(color: Colors.grey),
-        ),
-        TextButton(
-          onPressed: () {},
-          child: const Text(
-            'Sign in',
-            style: TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
-
-
-
-
