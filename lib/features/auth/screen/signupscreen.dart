@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -8,10 +9,11 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  // State untuk mengontrol visibilitas password
   bool _isPasswordVisible = false;
-  // State BARU untuk menyimpan peran yang dipilih
-  String? _selectedRole;
+  bool _isConfirmPasswordVisible = false;
+
+  final TextEditingController _dateController = TextEditingController();
+  String? _selectedGender;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 20),
-              // Judul Utama
               const Text(
                 'Sign up now',
                 textAlign: TextAlign.center,
@@ -45,7 +46,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              // Sub-judul
               const Text(
                 'Please fill the details and create account',
                 textAlign: TextAlign.center,
@@ -56,39 +56,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 50),
 
-              // Form Nama
+              // Full Name
               _buildTextField(hint: 'Your full name'),
               const SizedBox(height: 20),
 
-              // Form Email
+              // Email
               _buildTextField(
-                  hint: 'Your email address',
-                  keyboardType: TextInputType.emailAddress),
+                hint: 'Your email address',
+                keyboardType: TextInputType.emailAddress,
+              ),
               const SizedBox(height: 20),
 
-              // Form Password
+              // Phone
+              _buildTextField(
+                hint: 'Your phone number',
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 20),
+
+              // Date of Birth
+              _buildDatePickerField(context),
+              const SizedBox(height: 20),
+
+              // Gender
+              _buildGenderDropdown(),
+              const SizedBox(height: 20),
+
+              // Password
               _buildPasswordTextField(),
+              const SizedBox(height: 20),
+
+              // Confirmation Password
+              _buildConfirmPasswordTextField(),
               const SizedBox(height: 8),
 
-              // Petunjuk Password
               const Text(
                 'Password must be 8 character',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
-              const SizedBox(height: 30),
-
-              // === WIDGET BARU: PEMILIHAN PERAN ===
-              _buildRoleSelector(),
               const SizedBox(height: 40),
 
-              // Tombol Sign Up
               _buildSignUpButton(),
               const SizedBox(height: 40),
 
-              // Link ke Halaman Sign In
               _buildSignInLink(),
             ],
           ),
@@ -97,9 +107,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Widget umum untuk text field
-  Widget _buildTextField(
-      {required String hint, TextInputType keyboardType = TextInputType.text}) {
+  // Common text field
+  Widget _buildTextField({
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return TextFormField(
       keyboardType: keyboardType,
       decoration: InputDecoration(
@@ -116,12 +128,74 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Widget untuk text field password
+  // Date picker
+  Widget _buildDatePickerField(BuildContext context) {
+    return TextFormField(
+      controller: _dateController,
+      readOnly: true,
+      decoration: InputDecoration(
+        hintText: 'Date of Birth',
+        suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      ),
+      onTap: () async {
+        FocusScope.of(context).requestFocus(FocusNode());
+        DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime(2000),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
+        );
+        if (pickedDate != null) {
+          setState(() {
+            _dateController.text =
+                DateFormat('dd MMMM yyyy').format(pickedDate);
+          });
+        }
+      },
+    );
+  }
+
+  // Gender dropdown
+  Widget _buildGenderDropdown() {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        hintText: 'Select Gender',
+        filled: true,
+        fillColor: Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      ),
+      value: _selectedGender,
+      items: const [
+        DropdownMenuItem(value: 'Male', child: Text('Male')),
+        DropdownMenuItem(value: 'Female', child: Text('Female')),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _selectedGender = value;
+        });
+      },
+    );
+  }
+
+  // Password field
   Widget _buildPasswordTextField() {
     return TextFormField(
       obscureText: !_isPasswordVisible,
       decoration: InputDecoration(
-        hintText: '**********',
+        hintText: 'Password',
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(
@@ -145,84 +219,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // === WIDGET BARU: Bagian Pemilihan Peran ===
-  Widget _buildRoleSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Register as:',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildRoleCard(
-                icon: Icons.group,
-                label: 'Community',
-                role: 'Community',
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildRoleCard(
-                icon: Icons.record_voice_over,
-                label: 'Da\'i',
-                role: 'Dai',
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // === WIDGET BARU: Kartu untuk satu pilihan peran ===
-  Widget _buildRoleCard({
-    required IconData icon,
-    required String label,
-    required String role,
-  }) {
-    final bool isSelected = _selectedRole == role;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedRole = role;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.grey[100],
+  // Confirm Password field
+  Widget _buildConfirmPasswordTextField() {
+    return TextFormField(
+      obscureText: !_isConfirmPasswordVisible,
+      decoration: InputDecoration(
+        hintText: 'Confirm Password',
+        filled: true,
+        fillColor: Colors.grey[100],
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.blue : Colors.transparent,
-            width: 2,
-          ),
+          borderSide: BorderSide.none,
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: isSelected ? Colors.blue : Colors.grey[600], size: 32),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.blue : Colors.black87,
-              ),
-            ),
-          ],
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isConfirmPasswordVisible
+                ? Icons.visibility_off
+                : Icons.visibility,
+            color: Colors.grey,
+          ),
+          onPressed: () {
+            setState(() {
+              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+            });
+          },
         ),
       ),
     );
   }
 
-  // Widget untuk tombol Sign Up
   Widget _buildSignUpButton() {
     return ElevatedButton(
       onPressed: () {},
@@ -245,7 +272,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Widget untuk link ke halaman Sign In
   Widget _buildSignInLink() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -268,7 +294,3 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
-
-
-
-
