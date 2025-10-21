@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:masjida/features/auth/screen/signinscreen.dart';
+// IMPORT BARU untuk mengarahkan ke halaman login
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -48,7 +50,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       children: [
         const CircleAvatar(
           radius: 50,
-          backgroundImage: NetworkImage('https://placehold.co/200x200/EFEFEF/333?text=U'),
+          backgroundImage:
+          NetworkImage('https://placehold.co/200x200/EFEFEF/333?text=U'),
           backgroundColor: Colors.grey,
         ),
         const SizedBox(height: 16),
@@ -109,7 +112,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             title: 'Sign Out',
             color: Colors.red, // Warna merah untuk aksi logout
             onTap: () {
-              // Logika untuk logout
+              // === LOGIKA LOGOUT DITAMBAHKAN DI SINI ===
+              // Mengarahkan ke halaman Sign In dan menghapus semua halaman sebelumnya
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const SignInScreen()),
+                    (Route<dynamic> route) => false, // Predikat yang selalu false
+              );
             },
           ),
         ],
@@ -125,7 +133,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }) {
     return ListTile(
       leading: Icon(icon, color: Colors.grey[600]),
-      title: Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+      title:
+      Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
       subtitle: Text(
         subtitle,
         style: const TextStyle(
