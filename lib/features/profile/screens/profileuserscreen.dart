@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:masjida/features/auth/screen/signinscreen.dart';
+import '../../../core/api/api_service.dart';
+import '../../../core/models/profile_model.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -8,6 +11,27 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
+  final ApiService apiService = ApiService();
+  late Future<UserProfile> futureProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mengambil data profil saat halaman dimuat
+    futureProfile = apiService.getUserProfile();
+  }
+  
+  void _handleSignOut() async {
+    await apiService.signOut();
+    if (mounted) {
+      // Kembali ke halaman login dan hapus semua halaman di atasnya
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const SignInScreen()),
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,43 +49,55 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-          child: Column(
-            children: [
-              // Bagian Header Profil
-              _buildProfileHeader(),
-              const SizedBox(height: 30),
-              // Menu Aksi
-              _buildActionMenu(),
-            ],
-          ),
-        ),
+      body: FutureBuilder<UserProfile>(
+        future: futureProfile,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Gagal memuat profil: ${snapshot.error}'));
+          } else if (snapshot.hasData) {
+            final user = snapshot.data!;
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+                child: Column(
+                  children: [
+                    _buildProfileHeader(user),
+                    const SizedBox(height: 30),
+                    _buildActionMenu(user),
+                  ],
+                ),
+              ),
+            );
+          }
+          return const Center(child: Text('Profil tidak ditemukan.'));
+        },
       ),
     );
   }
 
   // Widget untuk header profil (foto, nama, email)
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(UserProfile user) {
     return Column(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 50,
-          backgroundImage: NetworkImage('https://placehold.co/200x200/EFEFEF/333?text=U'),
+          backgroundImage: NetworkImage(apiService.getFullImageUrl(user.imageUrl)),
           backgroundColor: Colors.grey,
+          child: (user.imageUrl == null) ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Name',
-          style: TextStyle(
+        Text(
+          user.name,
+          style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          'user.email@gmail.com',
+          user.email ?? 'Email tidak tersedia',
           style: TextStyle(
             fontSize: 16,
             color: Colors.grey[600],
@@ -72,7 +108,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   // Widget untuk menu (Informasi, Edit, Logout)
-  Widget _buildActionMenu() {
+  Widget _buildActionMenu(UserProfile user) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -84,17 +120,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _buildInfoTile(
             icon: Icons.person_outline,
             title: 'Username',
-            subtitle: 'user123',
+            subtitle: user.name,
           ),
           _buildInfoTile(
             icon: Icons.email_outlined,
             title: 'Email',
-            subtitle: 'user.email@gmail.com',
+            subtitle: user.email ?? 'N/A',
           ),
           _buildInfoTile(
             icon: Icons.phone_outlined,
             title: 'Phone',
-            subtitle: '+62 812 3456 7890',
+            subtitle: user.phone ?? 'N/A',
           ),
           const Divider(height: 20),
           _buildMenuTile(
@@ -108,9 +144,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             icon: Icons.logout,
             title: 'Sign Out',
             color: Colors.red, // Warna merah untuk aksi logout
-            onTap: () {
-              // Logika untuk logout
-            },
+            onTap: _handleSignOut,
           ),
         ],
       ),

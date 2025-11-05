@@ -2,9 +2,22 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/mosque_model.dart';
 import '../models/preacher_model.dart';
-import '../models/invitation_model.dart'; // <-- Pastikan import ini ada
+import '../models/invitation_model.dart';
+import '../models/profile_model.dart';
 
 class ApiService {
+  // --- Singleton Pattern Implementation ---
+  // 1. Buat constructor privat
+  ApiService._privateConstructor();
+
+  // 2. Buat satu-satunya instance dari class ini
+  static final ApiService _instance = ApiService._privateConstructor();
+
+  // 3. Buat factory constructor untuk mengembalikan instance yang sama
+  factory ApiService() {
+    return _instance;
+  }
+  // ----------------------------------------
   final String _baseUrl = "http://103.13.206.132:8069";
   String? _sessionCookie;
 
@@ -18,36 +31,96 @@ class ApiService {
     return '$_baseUrl$relativeUrl';
   }
 
-  Future<void> _authenticate() async {
-    // Fungsi ini akan dijalankan secara otomatis jika belum ada sesi.
-    // Pastikan db, login, dan password sesuai dengan server Odoo Anda.
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/web/session/authenticate'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          "jsonrpc": "2.0",
-          "params": {"db": "masjida", "login": "admin", "password": "admin"}
-        }),
-      );
+  Future<bool> signIn(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/web/session/authenticate'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        "jsonrpc": "2.0",
+        "params": {"db": "masjida", "login": email, "password": password}
+      }),
+    );
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['error'] != null) {
+        throw Exception(jsonResponse['error']['data']['message']);
+      }
+      print("Login berhasil!");
+      String? rawCookie = response.headers['set-cookie'];
+      if (rawCookie != null) {
+        int index = rawCookie.indexOf(';');
+        _sessionCookie = (index == -1) ? rawCookie : rawCookie.substring(0, index);
+        return true;
+      }
+    }
+    return false;
+  }
 
+  Future<bool> signUp({
+    required String name,
+    required String email,
+    required String password,
+    required String phone,
+    String? dateOfBirth,
+    String? gender,
+    required String userType,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/register_user'), // <-- PASTIKAN ENDPOINT INI BENAR!
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        "jsonrpc": "2.0",
+        "params": {
+          "name": name,
+          "email": email,
+          "password": password,
+          "phone": phone,
+          "date_of_birth": dateOfBirth,
+          "gender": gender,
+          "user_type": "preacher"
+        }
+      }),
+    );
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['result']?['status'] == 'success') {
+        print("Registrasi berhasil!");
+        return true;
+      } else {
+        throw Exception(jsonResponse['result']?['message'] ?? 'Registrasi gagal.');
+      }
+    } else {
+      throw Exception('Gagal mendaftar. Server error.');
+    }
+  }
+
+  Future<UserProfile> getUserProfile() async {
+    if (_sessionCookie == null) {
+      throw Exception('Anda harus login untuk melihat profil.');
+    }
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/profile'),
+        headers: {'Cookie': _sessionCookie!},
+      );
       if (response.statusCode == 200) {
-        print("Autentikasi berhasil!");
-        String? rawCookie = response.headers['set-cookie'];
-        if (rawCookie != null) {
-          int index = rawCookie.indexOf(';');
-          _sessionCookie =
-              (index == -1) ? rawCookie : rawCookie.substring(0, index);
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['status'] == 'success') {
+          return UserProfile.fromJson(jsonResponse['data']);
         } else {
-          throw Exception('Header set-cookie tidak ditemukan.');
+          throw Exception(jsonResponse['message'] ?? 'Gagal memuat profil.');
         }
       } else {
-        throw Exception('Gagal melakukan autentikasi ke server.');
+        throw Exception('Gagal memuat profil. Status: ${response.statusCode}');
       }
     } catch (e) {
-      print("ERROR di _authenticate: $e");
-      throw Exception('Gagal terhubung ke server untuk autentikasi.');
+      throw Exception('Error saat mengambil profil: $e');
     }
+  }
+  
+  Future<void> signOut() async {
+    _sessionCookie = null;
+    print("User signed out.");
   }
 
   Future<List<Mosque>> getMosques() async {
@@ -143,8 +216,10 @@ class ApiService {
   // === METODE BARU UNTUK NOTIFIKASI ===
 
   Future<List<Invitation>> getPendingInvitations() async {
-    // Membutuhkan login, jadi kita panggil authenticate
-    if (_sessionCookie == null) await _authenticate();
+    // Metode ini sekarang membutuhkan login terlebih dahulu
+    if (_sessionCookie == null) {
+      throw Exception('Anda harus login untuk melihat undangan.');
+    }
 
     try {
       final response = await http.get(
@@ -169,7 +244,9 @@ class ApiService {
   }
 
   Future<bool> confirmInvitation(int scheduleId) async {
-    if (_sessionCookie == null) await _authenticate();
+    if (_sessionCookie == null) {
+      throw Exception('Anda harus login untuk melihat undangan.');
+    }
 
     final response = await http.post(
       Uri.parse('$_baseUrl/api/v1/schedules/$scheduleId/confirm'),
@@ -189,7 +266,9 @@ class ApiService {
   }
 
   Future<bool> rejectInvitation(int scheduleId) async {
-    if (_sessionCookie == null) await _authenticate();
+    if (_sessionCookie == null) {
+      throw Exception('Anda harus login untuk melihat undangan.');
+    }
 
     final response = await http.post(
       Uri.parse('$_baseUrl/api/v1/schedules/$scheduleId/reject'),

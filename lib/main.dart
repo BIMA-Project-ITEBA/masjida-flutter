@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
       ),
       // Memanggil HomeScreen dari import yang benar
-      home: const SignUpScreen(),
+      home: const SignInScreen(),
     );
   }
 }
