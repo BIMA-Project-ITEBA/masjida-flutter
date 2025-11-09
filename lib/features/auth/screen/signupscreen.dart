@@ -39,7 +39,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        phone: _phoneController.text.trim(), userType: '',
+        phone: _phoneController.text.trim(), userType: 'preacher',
       );
 
       if (success && mounted) {

@@ -61,11 +61,15 @@ class Preacher {
   final int id;
   final String name;
   final String? code;
-  final String specialization;
-  final String? area;
-  final String? bio; // <-- Field baru untuk biografi
+  final String specialization; // Ini adalah NAMA (mis: "Aqidah")
+  final String? area; // Ini adalah NAMA (mis: "Bulang")
+  final String? bio; 
   final String? imageUrl;
-  final List<PreacherSchedule>? schedules; // <-- Field baru untuk jadwal
+  final List<PreacherSchedule>? schedules; 
+
+  // --- BARU: Field untuk menyimpan ID untuk keperluan filter ---
+  final int? specializationId; // Ini adalah ID (mis: 1)
+  final int? areaId; // Ini adalah ID (mis: 5)
 
   Preacher({
     required this.id,
@@ -76,18 +80,27 @@ class Preacher {
     this.bio,
     this.imageUrl,
     this.schedules,
+    // --- BARU: Tambahkan field ID ke konstruktor ---
+    this.specializationId,
+    this.areaId,
   });
 
+  // Factory ini digunakan untuk daftar Da'i (dailistscreen)
   factory Preacher.fromJson(Map<String, dynamic> json) {
     return Preacher(
       id: json['id'] ?? 0,
       name: json['name'] ?? 'No Name',
       code: json['code']?.toString(),
-      specialization: json['specialization'] ?? 'N/A',
-      area: json['area']?.toString() ?? 'N/A',
+      specialization: json['specialization'] ?? 'N/A', // NAMA dari API
+      area: json['area']?.toString() ?? 'N/A', // NAMA dari API
       imageUrl: json['image_url']?.toString(),
+      // --- BARU: Mapping field ID dari API ---
+      specializationId: json['specialization_id'], // ID dari API
+      areaId: json['area_id'], // ID dari API
     );
   }
+
+  // Factory ini digunakan untuk halaman detail Da'i (profiledaiscreen)
    factory Preacher.fromDetailJson(Map<String, dynamic> json) {
     var scheduleList = <PreacherSchedule>[];
     if (json['schedules'] != null) {
@@ -105,6 +118,9 @@ class Preacher {
       bio: json['bio']?.toString(),
       imageUrl: json['image_url']?.toString(),
       schedules: scheduleList,
+      // --- BARU: Pastikan factory detail juga konsisten ---
+      specializationId: json['specialization_id'], // Asumsi API detail juga mengirim ID
+      areaId: json['area_id'], // Asumsi API detail juga mengirim ID
     );
   }
   

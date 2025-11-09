@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:intl/intl.dart';
+// --- IMPORT BARU UNTUK GOOGLE MAPS ---
+import 'package:url_launcher/url_launcher.dart';
+// ------------------------------------
+
+// --- IMPORT BARU UNTUK PETA ---
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as latlng;
+// ------------------------------
+
 import '../../../core/api/api_service.dart';
 import '../../../core/models/mosque_model.dart';
 
@@ -21,6 +30,49 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
     super.initState();
     futureMosque = apiService.getMosqueDetail(widget.mosqueId);
   }
+
+  // --- FUNGSI BARU UNTUK MEMBUKA GOOGLE MAPS ---
+  Future<void> _launchGoogleMaps(double? lat, double? lon, String? address) async {
+    // Prioritaskan Latitude/Longitude jika ada
+    if (lat != null && lon != null && lat != 0.0 && lon != 0.0) {
+      // URL universal untuk membuka Google Maps di lat/lon
+      final String googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=$lat,$lon';
+      final Uri uri = Uri.parse(googleMapsUrl);
+
+      if (await canLaunchUrl(uri)) {
+        // Buka di aplikasi Google Maps eksternal
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showMapError();
+      }
+    }
+    // Jika tidak ada lat/lon, coba cari berdasarkan alamat (fullAddress)
+    else if (address != null && address.isNotEmpty) {
+      final String query = Uri.encodeComponent(address);
+      final Uri uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+      
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showMapError();
+      }
+    } 
+    // Jika tidak ada data sama sekali
+    else {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Koordinat atau alamat lokasi masjid tidak tersedia.')),
+      );
+    }
+  }
+
+  void _showMapError() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka Google Maps.')),
+      );
+    }
+  }
+  // ---------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +153,7 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- KARTU INFORMASI UTAMA ---
+            // --- KARTU INFORMASI UTAMA (MODIFIKASI) ---
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -111,12 +163,29 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
                   children: [
                     _buildInfoRow(Icons.qr_code_scanner, 'Kode', mosque.code ?? 'N/A'),
                     const Divider(height: 24),
-                    _buildInfoRow(Icons.location_on_outlined, 'Area', mosque.area ?? 'N/A'),
+                    
+                    // --- GANTI INFO AREA DENGAN ALAMAT YANG BISA DIKLIK ---
+                    _buildAddressRow(
+                      Icons.location_on_outlined, 
+                      'Alamat', 
+                      // Gunakan fullAddress, jika tidak ada, gunakan area
+                      mosque.fullAddress ?? mosque.area, 
+                      () {
+                        // Panggil fungsi Google Maps
+                        _launchGoogleMaps(mosque.latitude, mosque.longitude, mosque.fullAddress);
+                      }
+                    ),
+                    // ----------------------------------------------------
+                    
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
+
+            // --- TAMBAHAN BARU: PETA LOKASI ---
+            _buildEmbeddedMap(mosque),
+            // ---------------------------------
 
             // --- SEKSI DESKRIPSI ---
             const Text('Deskripsi Masjid', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -162,6 +231,106 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
       ],
     );
   }
+  
+  // --- WIDGET BARU UNTUK PETA EMBEDDED ---
+  Widget _buildEmbeddedMap(Mosque mosque) {
+    // Cek jika lat/lon valid (tidak null DAN tidak 0.0)
+    final bool hasCoordinates = mosque.latitude != null &&
+        mosque.longitude != null &&
+        mosque.latitude != 0.0 &&
+        mosque.longitude != 0.0;
+
+    // Jika tidak ada koordinat, jangan tampilkan apapun
+    if (!hasCoordinates) {
+      return const SizedBox.shrink(); // Mengembalikan widget kosong
+    }
+
+    // Jika ada koordinat, tampilkan peta
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Peta Lokasi',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          clipBehavior: Clip.antiAlias, // Penting agar peta terpotong rapi di sudut
+          child: AspectRatio(
+            aspectRatio: 16 / 10, // Rasio peta (lebar/tinggi)
+            child: FlutterMap(
+              options: MapOptions(
+                // Gunakan '!' karena kita sudah cek null di 'hasCoordinates'
+                initialCenter: latlng.LatLng(mosque.latitude!, mosque.longitude!),
+                initialZoom: 16.0, // Zoom level (15-17 biasanya ideal)
+              ),
+              children: [
+                // Layer 1: Tile (Gambar Peta) dari OpenStreetMap
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.masjida', // Ganti dengan ID aplikasi Anda
+                ),
+                // Layer 2: Marker (Pin Lokasi)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      width: 80.0,
+                      height: 80.0,
+                      point: latlng.LatLng(mosque.latitude!, mosque.longitude!),
+                      child: Icon(
+                        Icons.location_pin,
+                        color: Colors.red.shade700,
+                        size: 40.0,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24), // Jarak sebelum "Deskripsi Masjid"
+      ],
+    );
+  }
+  // ------------------------------------
+
+  // --- WIDGET BARU UNTUK ALAMAT YANG BISA DIKLIK ---
+  Widget _buildAddressRow(IconData icon, String label, String value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap, // Panggil fungsi saat diklik
+      borderRadius: BorderRadius.circular(8.0),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0), // Beri padding agar area klik nyaman
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start, // Agar rapi jika alamat panjang
+          children: [
+            Icon(icon, color: Colors.blue, size: 20), // Ganti warna jadi biru
+            const SizedBox(width: 16),
+            Text('$label:', style: TextStyle(color: Colors.grey[600])),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                value, 
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue, // Ganti warna jadi biru
+                  decoration: TextDecoration.underline, // Tambah garis bawah
+                  decorationColor: Colors.blue,
+                  decorationStyle: TextDecorationStyle.dotted,
+                )
+              )
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.launch, color: Colors.blue, size: 16), // Ikon 'buka'
+          ],
+        ),
+      ),
+    );
+  }
+  // -------------------------------------------------
 
   Widget _buildScheduleCard(Schedule schedule) {
     return Card(

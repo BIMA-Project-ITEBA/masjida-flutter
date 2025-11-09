@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
-// Class baru untuk merepresentasikan satu jadwal
+// Class untuk merepresentasikan satu jadwal (milik masjid)
 class Schedule {
   final int id;
   final String topic;
@@ -16,35 +17,30 @@ class Schedule {
 
   // Helper getter untuk memformat tanggal agar lebih mudah dibaca
   String get formattedDate {
-    print("DEBUG START_TIME: $startTime");
-    // Tambahkan pengecekan jika startTime kosong
     if (startTime.isEmpty) {
       return 'Tanggal tidak valid';
     }
     try {
-      // KEMBALI MENGGUNAKAN DateTime.parse()
-      // Fungsi ini secara default bisa membaca format ISO 8601 (dengan 'T')
+      // Menggunakan DateTime.parse()
+      // Odoo mengirimkan format ISO 8601 (2025-11-05 15:00:00)
+      // yang dapat diparsing langsung oleh Dart.
       final dateTime = DateTime.parse(startTime);
-      print('✅ Berhasil parse: $dateTime');
-      return DateFormat('EEEE, d MMMM yyyy').format(dateTime);
+      return DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(dateTime);
     } catch (e) {
-      print("Error parsing date '$startTime': $e");
+      debugPrint("Error parsing date '$startTime': $e");
       return 'Tanggal tidak valid';
     }
   }
 
   String get formattedTime {
-    // Tambahkan pengecekan jika startTime kosong
     if (startTime.isEmpty) {
       return '--:--';
     }
      try {
-      // KEMBALI MENGGUNAKAN DateTime.parse()
       final dateTime = DateTime.parse(startTime);
-      print('✅ Berhasil parse: $dateTime');
       return DateFormat('HH:mm').format(dateTime);
     } catch (e) {
-      print("Error parsing time '$startTime': $e");
+      debugPrint("Error parsing time '$startTime': $e");
       return '--:--';
     }
   }
@@ -53,44 +49,56 @@ class Schedule {
     return Schedule(
       id: json['id'] ?? 0,
       topic: json['topic']?.toString() ?? 'Topik tidak tersedia',
-    startTime: json['start_time']?.toString() ?? '',
-    preacherName: json['preacher_name']?.toString() ?? 'N/A',
+      startTime: json['start_time']?.toString() ?? '',
+      preacherName: json['preacher_name']?.toString() ?? 'N/A',
     );
   }
 }
 
+// Class utama untuk model Masjid
 class Mosque {
   final int id;
   final String name;
   final String? code;
-  final String area; // Ganti ini dari fullAddress
+  final String area; // Ini adalah 'area.name' dari Odoo
   final String? description;
   final String? imageUrl;
   final List<Schedule>? schedules;
   
+  // --- FIELD BARU UNTUK GOOGLE MAPS & ALAMAT ---
+  final String? fullAddress; // Alamat lengkap
+  final double? latitude;     // Koordinat
+  final double? longitude;    // Koordinat
+  // ------------------------------------------
+
   Mosque({
     required this.id,
     required this.name,
     this.code,
-    required this.area, // Tambahkan di constructor
+    required this.area,
     this.description,
     this.imageUrl,
     this.schedules,
+    // --- TAMBAHKAN DI CONSTRUCTOR ---
+    this.fullAddress,
+    this.latitude,
+    this.longitude,
   });
 
-  // Fungsi ini untuk data dari DAFTAR masjid
-  // Untuk DAFTAR masjid
+  // Factory untuk data dari DAFTAR masjid (API: /api/v1/mosques)
+  // Data ini minimal, tidak termasuk jadwal atau lat/lon
   factory Mosque.fromJson(Map<String, dynamic> json) {
-  return Mosque(
-    id: json['id'] ?? 0,
-    name: json['name'] ?? 'No Name',
-    code: json['code']?.toString(),  // Ubah ke String?
-    area: json['area']?.toString() ?? 'No Area',  // Pastikan String
-    imageUrl: json['image_url']?.toString(),      // Pastikan String?
-  );
-}
+    return Mosque(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? 'No Name',
+      code: json['code']?.toString(),
+      area: json['area']?.toString() ?? 'No Area',
+      imageUrl: json['image_url']?.toString(),
+    );
+  }
 
-  // Untuk DETAIL masjid
+  // Factory untuk data dari DETAIL masjid (API: /api/v1/mosques/<id>)
+  // Data ini lengkap, termasuk jadwal dan data Google Maps
   factory Mosque.fromDetailJson(Map<String, dynamic> json) {
     var scheduleList = <Schedule>[];
     if (json['schedules'] != null) {
@@ -102,11 +110,22 @@ class Mosque {
     return Mosque(
       id: json['id'] ?? 0,
       name: json['name'] ?? 'No Name',
-     code: json['code']?.toString(),  // Ubah ke String?
-      area: json['area']?.toString() ?? 'No Area',  // Pastikan String
-      description: json['description']?.toString() ?? 'tidak ada diskripsi',  // Pastikan String,
-      imageUrl: json['image_url']?.toString(),      // Pastikan String?
-      schedules: scheduleList, // <-- Masukkan daftar jadwal
+      code: json['code']?.toString(),
+      area: json['area']?.toString() ?? 'No Area',
+      description: json['description']?.toString() ?? 'Tidak ada deskripsi',
+      imageUrl: json['image_url']?.toString(),
+      schedules: scheduleList,
+      
+      // --- TAMBAHAN PARSING BARU ---
+      fullAddress: json['full_address']?.toString(),
+      // Konversi 'num' (bisa int atau double) dari JSON ke 'double'
+      latitude: (json['latitude'] is num) 
+          ? (json['latitude'] as num).toDouble() 
+          : null,
+      longitude: (json['longitude'] is num) 
+          ? (json['longitude'] as num).toDouble() 
+          : null,
+      // ----------------------------
     );
   }
 }
