@@ -7,6 +7,8 @@ import '../models/invitation_model.dart';
 import '../models/profile_model.dart';
 // --- IMPORT BARU UNTUK MODEL JADWAL PUBLIK ---
 import '../models/public_schedule_model.dart';
+import 'package:intl/intl.dart';
+
 
 class ApiService {
   // --- Singleton Pattern Implementation ---
@@ -20,6 +22,8 @@ class ApiService {
   // Ganti dengan IP Odoo server Anda
   final String _baseUrl = "http://103.13.206.132:8069";
   String? _sessionCookie;
+
+  bool get isLoggedIn => _sessionCookie != null;
 
   /// Helper function untuk membuat URL gambar yang lengkap.
   String getFullImageUrl(String? relativeUrl) {
@@ -504,4 +508,48 @@ class ApiService {
     }
     return false;
   }
+
+// --- MODIFIKASI: Tambahkan metode createSermonProposal ---
+  Future<bool> createSermonProposal({
+    required int mosqueId,
+    required String topic,
+    required DateTime startTime,
+    String? notes,
+  }) async {
+    if (!isLoggedIn) {
+      throw Exception('Anda harus login untuk mengajukan proposal.');
+    }
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/proposals'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': _sessionCookie!, // Sertakan cookie sesi
+      },
+      body: json.encode({
+        "jsonrpc": "2.0",
+        "params": {
+          "mosque_id": mosqueId,
+          "proposed_topic": topic,
+          // Odoo mengharapkan format UTC (YYYY-MM-DD HH:MM:SS)
+          "proposed_start_time": DateFormat("yyyy-MM-dd HH:mm:ss").format(startTime.toUtc()),
+          "notes": notes,
+        }
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['result']?['status'] == 'success') {
+        return true;
+      } else {
+        // Tangkap pesan error dari Odoo jika ada
+        throw Exception(jsonResponse['result']?['message'] ?? 'Gagal membuat proposal.');
+      }
+    } else {
+      throw Exception('Gagal terhubung ke server. Status: ${response.statusCode}');
+    }
+  }
+  // --------------------------------------------------------
+
 }
