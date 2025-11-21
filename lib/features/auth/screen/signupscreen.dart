@@ -39,7 +39,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        phone: _phoneController.text.trim(), userType: 'preacher',
+        phone: _phoneController.text.trim(),
+        userType: 'preacher',
       );
 
       if (success && mounted) {
@@ -93,62 +94,107 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       ),
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 20),
-              const Text('Sign up now', textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('Please fill the details and create account', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
-              const SizedBox(height: 50),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 20),
+            const Text(
+              'Sign up now',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Please fill the details and create account',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 50),
 
-              TextFormField(controller: _nameController, decoration: _inputDecoration(hint: 'Your full name')),
-              const SizedBox(height: 20),
-              TextFormField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: _inputDecoration(hint: 'Your email address')),
-              const SizedBox(height: 20),
-              TextFormField(controller: _phoneController, keyboardType: TextInputType.phone, decoration: _inputDecoration(hint: 'Your phone number')),
-              const SizedBox(height: 20),
-              _buildDatePickerField(context),
-              const SizedBox(height: 20),
-              _buildGenderDropdown(),
-              const SizedBox(height: 20),
-              _buildPasswordTextField(),
-              const SizedBox(height: 20),
-              _buildConfirmPasswordTextField(),
-              const SizedBox(height: 8),
+            TextFormField(
+              controller: _nameController,
+              decoration: _inputDecoration(hint: 'Your full name'),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: _inputDecoration(hint: 'Your email address'),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: _inputDecoration(hint: 'Your phone number'),
+            ),
+            const SizedBox(height: 20),
+            _buildDatePickerField(context),
+            const SizedBox(height: 20),
+            _buildGenderDropdown(),
+            const SizedBox(height: 20),
+            _buildPasswordTextField(),
+            const SizedBox(height: 20),
+            _buildConfirmPasswordTextField(),
+            const SizedBox(height: 8),
 
-              const Text('Password must be 8 characters', style: TextStyle(fontSize: 14, color: Colors.grey)),
-              const SizedBox(height: 40),
+            const Text(
+              'Password must be 8 characters',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 40),
 
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleSignUp,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+            ElevatedButton(
+              onPressed: _isLoading ? null : _handleSignUp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: _isLoading
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                    : const Text('Sign Up', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                elevation: 0,
               ),
-              const SizedBox(height: 40),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : const Text(
+                      'Sign Up',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 40),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Already have an account?", style: TextStyle(color: Colors.grey)),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Sign in', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  "Already have an account?",
+                  style: TextStyle(color: Colors.grey),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Sign in',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -161,7 +207,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       hintText: hint,
       filled: true,
       fillColor: Colors.grey[100],
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
     );
   }
@@ -183,7 +232,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
         if (pickedDate != null) {
           setState(() {
-            _dateController.text = DateFormat('dd MMMM yyyy').format(pickedDate);
+            _dateController.text = DateFormat(
+              'dd MMMM yyyy',
+            ).format(pickedDate);
           });
         }
       },
@@ -208,8 +259,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
       obscureText: !_isPasswordVisible,
       decoration: _inputDecoration(hint: 'Password').copyWith(
         suffixIcon: IconButton(
-          icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
-          onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+          icon: Icon(
+            _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey,
+          ),
+          onPressed: () =>
+              setState(() => _isPasswordVisible = !_isPasswordVisible),
         ),
       ),
     );
@@ -221,8 +276,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       obscureText: !_isConfirmPasswordVisible,
       decoration: _inputDecoration(hint: 'Confirm Password').copyWith(
         suffixIcon: IconButton(
-          icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
-          onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+          icon: Icon(
+            _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey,
+          ),
+          onPressed: () => setState(
+            () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
+          ),
         ),
       ),
     );
