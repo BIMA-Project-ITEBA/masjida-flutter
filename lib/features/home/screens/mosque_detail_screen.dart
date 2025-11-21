@@ -25,10 +25,20 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
   late Future<Mosque> futureMosque;
   final ApiService apiService = ApiService();
 
+  // --- MODIFIKASI: Variabel state baru ---
+  bool _isPreacherLoggedIn = false;
+  // ------------------------------------
+
   @override
   void initState() {
     super.initState();
     futureMosque = apiService.getMosqueDetail(widget.mosqueId);
+    
+    // --- MODIFIKASI: Cek status login saat initState ---
+    // Kita panggil singleton ApiService untuk cek status login
+    // Ini aman karena ApiService adalah singleton
+    _isPreacherLoggedIn = apiService.isLoggedIn;
+    // -------------------------------------------------
   }
 
   // --- FUNGSI BARU UNTUK MEMBUKA GOOGLE MAPS ---
@@ -56,12 +66,12 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
       } else {
         _showMapError();
       }
-    } 
+    }
     // Jika tidak ada data sama sekali
     else {
-       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Koordinat atau alamat lokasi masjid tidak tersedia.')),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Koordinat atau alamat lokasi masjid tidak tersedia.')),
+       );
     }
   }
 
@@ -166,10 +176,10 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
                     
                     // --- GANTI INFO AREA DENGAN ALAMAT YANG BISA DIKLIK ---
                     _buildAddressRow(
-                      Icons.location_on_outlined, 
-                      'Alamat', 
+                      Icons.location_on_outlined,
+                      'Alamat',
                       // Gunakan fullAddress, jika tidak ada, gunakan area
-                      mosque.fullAddress ?? mosque.area, 
+                      mosque.fullAddress ?? mosque.area,
                       () {
                         // Panggil fungsi Google Maps
                         _launchGoogleMaps(mosque.latitude, mosque.longitude, mosque.fullAddress);
@@ -186,6 +196,14 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
             // --- TAMBAHAN BARU: PETA LOKASI ---
             _buildEmbeddedMap(mosque),
             // ---------------------------------
+
+            // --- MODIFIKASI: Tombol Request to Preach (Kondisional) ---
+            if (_isPreacherLoggedIn) ...[
+              const SizedBox(height: 24),
+              _buildRequestButton(mosque),
+              const SizedBox(height: 24),
+            ],
+            // ------------------------------------------------------
 
             // --- SEKSI DESKRIPSI ---
             const Text('Deskripsi Masjid', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -231,7 +249,7 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
       ],
     );
   }
-  
+ 
   // --- WIDGET BARU UNTUK PETA EMBEDDED ---
   Widget _buildEmbeddedMap(Mosque mosque) {
     // Cek jika lat/lon valid (tidak null DAN tidak 0.0)
@@ -313,7 +331,7 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                value, 
+                value,
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Colors.blue, // Ganti warna jadi biru
@@ -331,6 +349,154 @@ class _MosqueDetailScreenState extends State<MosqueDetailScreen> {
     );
   }
   // -------------------------------------------------
+
+  // --- MODIFIKASI: Widget baru untuk tombol Request ---
+  Widget _buildRequestButton(Mosque mosque) {
+    return ElevatedButton.icon(
+      icon: const Icon(Icons.record_voice_over_outlined),
+      label: const Text('Ajukan Jadwal Dakwah (Request to Preach)'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue[800],
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 50), // Buat tombol penuh
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      onPressed: () {
+        _showProposalDialog(mosque);
+      },
+    );
+  }
+  // ------------------------------------------------
+
+  // --- MODIFIKASI: Widget baru untuk Dialog Proposal ---
+  Future<void> _showProposalDialog(Mosque mosque) async {
+    final _formKey = GlobalKey<FormState>();
+    final _topicController = TextEditingController();
+    final _notesController = TextEditingController();
+    DateTime? _selectedDateTime;
+    bool _isSubmitting = false;
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Ajukan Dakwah di ${mosque.name}'),
+              content: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: _topicController,
+                        decoration: const InputDecoration(
+                          labelText: 'Topik Dakwah',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) => (value == null || value.isEmpty) ? 'Topik tidak boleh kosong' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: 'Waktu Dakwah',
+                          hintText: _selectedDateTime == null
+                              ? 'Pilih Tanggal & Waktu'
+                              : DateFormat('EEEE, d MMM yyyy, HH:mm').format(_selectedDateTime!),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: const Icon(Icons.calendar_month),
+                        ),
+                        onTap: () async {
+                          // 1. Pilih Tanggal
+                          final DateTime? pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                          );
+                          if (pickedDate == null) return;
+
+                          // 2. Pilih Waktu
+                          final TimeOfDay? pickedTime = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          if (pickedTime == null) return;
+
+                          // 3. Gabungkan
+                          setDialogState(() {
+                            _selectedDateTime = DateTime(
+                              pickedDate.year,
+                              pickedDate.month,
+                              pickedDate.day,
+                              pickedTime.hour,
+                              pickedTime.minute,
+                            );
+                          });
+                        },
+                        validator: (value) => (_selectedDateTime == null) ? 'Waktu tidak boleh kosong' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Catatan (Opsional)',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: _isSubmitting ? null : () async {
+                    if (_formKey.currentState!.validate()) {
+                      setDialogState(() => _isSubmitting = true);
+                      try {
+                        bool success = await apiService.createSermonProposal(
+                          mosqueId: mosque.id,
+                          topic: _topicController.text,
+                          startTime: _selectedDateTime!,
+                          notes: _notesController.text,
+                        );
+
+                        if (success && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Proposal berhasil diajukan!'), backgroundColor: Colors.green),
+                          );
+                          Navigator.of(dialogContext).pop();
+                        }
+                      } catch (e) {
+                         if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                          );
+                         }
+                      } finally {
+                         setDialogState(() => _isSubmitting = false);
+                      }
+                    }
+                  },
+                  child: _isSubmitting
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Kirim Proposal'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  // ------------------------------------------------
 
   Widget _buildScheduleCard(Schedule schedule) {
     return Card(

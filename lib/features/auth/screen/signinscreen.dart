@@ -49,6 +49,14 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _handleGuestNavigation() async {
+    if (!mounted) return;
+    // Navigasi ke HomeScreen, menggantikan layar login
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    );
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -156,7 +164,22 @@ class _SignInScreenState extends State<SignInScreen> {
                     ),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 24), // Memberi spasi
+            // Tombol baru untuk navigasi tamu (Jama'ah)
+            TextButton(
+              onPressed: _isLoading
+                  ? null
+                  : _handleGuestNavigation, // Panggil metode baru
+              child: const Text(
+                'Jelajahi Sebagai Tamu',
+                style: TextStyle(
+                  color: Colors.black54, // Warna yang lebih netral
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24), // Spasi ke row berikutnya
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
